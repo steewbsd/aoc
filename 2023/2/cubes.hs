@@ -5,7 +5,7 @@ import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Expr
 
 -- Possible Cube colors
-data CubeColor = Red | Blue | Green deriving (Show)
+data CubeColor = Red | Blue | Green deriving (Show, Eq)
 
 -- Cube type, with number of cubes and the color
 data Cube = Cube Int CubeColor deriving (Show)
@@ -41,10 +41,9 @@ cubeParser = do
   spaces
   n <- number
   spaces
-  c <- color
-  return $ Cube n c
+  Cube n <$> color
 
-lineParser :: GenParser Char st (Int, [Cube])
+lineParser :: GenParser Char st Game
 lineParser =
   do
     spaces
@@ -57,7 +56,7 @@ lineParser =
             return x
         )
     eof
-    return (game, cubes)
+    return $ Game game cubes
 
 incrementCube :: Cube -> (Cube, Cube, Cube) -> (Cube, Cube, Cube)
 incrementCube (Cube n Red) (Cube a _, g, b) = (Cube (n + a) Red, g, b)
@@ -65,8 +64,14 @@ incrementCube (Cube n Green) (r, Cube a _, b) = (r, Cube (n + a) Green, b)
 incrementCube (Cube n Blue) (r, g, Cube a _) = (r, g, Cube (n + a) Blue)
 
 --                     Red   Green Blue
-sumCubes :: [Cube] -> (Cube, Cube, Cube)
-sumCubes = foldr incrementCube (Cube 0 Red, Cube 0 Green, Cube 0 Blue)
+sumCubes :: [Cube] -> [CubeColor] -> [Cube]
+sumCubes _ [] = []
+sumCubes c matchAgainst = Cube n match : sumCubes c restToMatch -- (sum . fst $ split) (head c):sumCubes
+  where
+    match = head matchAgainst
+    split = filter (\(Cube _ m) -> m == match) c
+    n = foldr (\(Cube n _) acc -> n + acc) 0 split
+    restToMatch = tail matchAgainst
 
 maxRed = 12 :: Int
 
@@ -74,15 +79,20 @@ maxGreen = 13 :: Int
 
 maxBlue = 14 :: Int
 
+data Game = Game
+  { num :: Int,
+    cubes :: [Cube]
+  }
+  deriving (Show)
+
 main :: IO ()
 main = do
   f <- readFile "input"
-  print
-    $ filter
-    $ (\g c -> fst c < maxRed && snd c < maxGreen)
-      . map
-        ( \l -> case parse lineParser "Error" l of
-            Left _ -> (0, (Cube 0 Red, Cube 0 Green, Cube 0 Blue))
-            Right (g, c) -> (g, sumCubes c)
-        )
+  print $ foldr (\ (Game n _) acc -> acc + n) 0
+    $ filter (\(Game num (Cube nred Red : Cube ngreen Green : Cube nblue Blue : _)) -> nred < maxRed && nblue < maxBlue && ngreen < maxGreen)
+    $ map
+      ( \l -> case parse lineParser "Error" l of
+          Left _ -> Game 0 []
+          Right game -> Game (num game) (sumCubes (cubes game) [Red, Green, Blue])
+      )
     $ lines f
