@@ -59,4 +59,4 @@ getDigits s =
 main :: IO ()
 main = do
   contents <- readFile "input"
-  print $ sum . map getDigits $ lines contents
+  print $ map getDigits $ lines contents
