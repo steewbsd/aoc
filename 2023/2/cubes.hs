@@ -89,10 +89,14 @@ main :: IO ()
 main = do
   f <- readFile "input"
   print $ foldr (\ (Game n _) acc -> acc + n) 0
-    $ filter (\(Game num (Cube nred Red : Cube ngreen Green : Cube nblue Blue : _)) -> nred < maxRed && nblue < maxBlue && ngreen < maxGreen)
+    -- $ filter (\(Game num (Cube nred Red : Cube ngreen Green : Cube nblue Blue : _)) -> nred < maxRed && nblue < maxBlue && ngreen < maxGreen)
+    $ filter (\(Game num cubes) -> not $ any (\(Cube n c) -> case c of
+                                                          Red -> n > maxRed
+                                                          Green -> n > maxGreen
+                                                          Blue -> n > maxBlue) cubes)
     $ map
       ( \l -> case parse lineParser "Error" l of
           Left _ -> Game 0 []
-          Right game -> Game (num game) (sumCubes (cubes game) [Red, Green, Blue])
+          Right game -> game -- Game (num game) (sumCubes (cubes game) [Red, Green, Blue])
       )
     $ lines f
