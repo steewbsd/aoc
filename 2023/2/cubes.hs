@@ -44,7 +44,7 @@ cubeParser = do
   c <- color
   return $ Cube n c
 
-lineParser :: GenParser Char st [Cube]
+lineParser :: GenParser Char st (Int, [Cube])
 lineParser =
   do
     spaces
@@ -57,24 +57,32 @@ lineParser =
             return x
         )
     eof
-    return cubes
+    return (game, cubes)
 
 incrementCube :: Cube -> (Cube, Cube, Cube) -> (Cube, Cube, Cube)
-incrementCube (Cube n Red) (r, g, b) = (Cube (n+1) Red, g, b)
-incrementCube (Cube n Green) (r, g, b) = (r, Cube (n+1) Green, b)
-incrementCube (Cube n Blue) (r, g, b) = (r, g, Cube (n+1) Blue)
+incrementCube (Cube n Red) (Cube a _, g, b) = (Cube (n + a) Red, g, b)
+incrementCube (Cube n Green) (r, Cube a _, b) = (r, Cube (n + a) Green, b)
+incrementCube (Cube n Blue) (r, g, Cube a _) = (r, g, Cube (n + a) Blue)
 
 --                     Red   Green Blue
 sumCubes :: [Cube] -> (Cube, Cube, Cube)
-sumCubes = foldr (\c acc -> incrementCube c acc) (Cube 0 Red, Cube 0 Green, Cube 0 Blue) 
+sumCubes = foldr incrementCube (Cube 0 Red, Cube 0 Green, Cube 0 Blue)
+
+maxRed = 12 :: Int
+
+maxGreen = 13 :: Int
+
+maxBlue = 14 :: Int
 
 main :: IO ()
 main = do
-  f <- readFile "reduced"
+  f <- readFile "input"
   print
-    $ map
-      ( \l -> case parse lineParser "Error" l of
-          Left _ -> (Cube 0 Red, Cube 0 Green, Cube 0 Blue)
-          Right c -> trace (show c) sumCubes c
-      )
+    $ filter
+    $ (\g c -> fst c < maxRed && snd c < maxGreen)
+      . map
+        ( \l -> case parse lineParser "Error" l of
+            Left _ -> (0, (Cube 0 Red, Cube 0 Green, Cube 0 Blue))
+            Right (g, c) -> (g, sumCubes c)
+        )
     $ lines f
