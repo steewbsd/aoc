@@ -67,4 +67,4 @@
 (defun declare-safe (table)
   (mapcar (lambda (x) (or (check-ascending x 't) (check-descending x 't))) table))
 
-(format t "~a~%" (mapcar (lambda (x) (check-ascending x 't)) parsed-table))
+(format t "~a~%" (declare-safe parsed-table))
